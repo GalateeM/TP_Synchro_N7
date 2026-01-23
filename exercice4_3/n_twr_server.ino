@@ -36,6 +36,7 @@ uint8_t rxData[128];
 uint16_t rxLen;
 int state;
 uint32_t timeout;
+uint8_t panId = 30;
 
 
 void setup()
@@ -64,7 +65,7 @@ void loop()
   switch (state) {
    
     case TWR_ENGINE_STATE_INIT:
-      Serial.println("[STATE] Init");
+      //Serial.println("[STATE] Init");
       decaduino.plmeRxEnableRequest();
       state = TWR_ENGINE_STATE_WAIT_START;
       break;
@@ -72,7 +73,7 @@ void loop()
     case TWR_ENGINE_STATE_WAIT_START:
       //Serial.println("[STATE] Wait start");
       if ( decaduino.rxFrameAvailable() ) {
-        if ( rxData[0] == TWR_MSG_TYPE_START ) {
+        if ( rxData[0] == panId && rxData[1] == TWR_MSG_TYPE_START ) {
           Serial.println("[MESSAGE] Start");
           state = TWR_ENGINE_STATE_MEMORISE_T2;
         }
@@ -119,11 +120,12 @@ void loop()
     case TWR_ENGINE_STATE_SEND_DATA_REPLY:
       Serial.println("[STATE] Send DATA reply");
       // delay(ACK_DATA_REPLY_INTERFRAME);
-      txData[0] = TWR_MSG_TYPE_DATA_REPLY;
-      decaduino.encodeUint40(t2, &txData[1]);
-      decaduino.encodeUint40(t3, &txData[6]);
+      txData[0] = panId;
+      txData[1] = TWR_MSG_TYPE_DATA_REPLY;
+      decaduino.encodeUint40(t2, &txData[2]);
+      decaduino.encodeUint40(t3, &txData[7]);
       // decaduino.pdDataRequest(txData, 11);
-      decaduino.pdDataRequest(txData, 11, true, t3);
+      decaduino.pdDataRequest(txData, 12, true, t3);
       timeout = millis() + TIMEOUT_WAIT_DATA_REPLY_SENT;
       state = TWR_ENGINE_STATE_WAIT_DATA_REPLY_SENT;
       break;
