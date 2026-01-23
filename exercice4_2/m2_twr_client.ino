@@ -141,7 +141,6 @@ void loop()
       Serial.print("\t");
       Serial.println(distance);
       Serial.print("\t");
-      Serial.println(decaduino.getLastRxSkew());
       state = TWR_ENGINE_STATE_INIT;
       break;
 

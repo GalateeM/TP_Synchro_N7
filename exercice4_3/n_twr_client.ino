@@ -11,7 +11,7 @@
 
 // Timeout parameters
 #define TIMEOUT_WAIT_START_SENT 20 //ms
-#define TIMEOUT_WAIT_ACK 50 //ms
+#define TIMEOUT_WAIT_ACK 100 //ms
 
 // Ranging period parameter
 #define RANGING_PERIOD 500 //ms
@@ -26,7 +26,9 @@ TWR_ENGINE_STATE_EXTRACT_T2_T3 };
 #define TWR_MSG_TYPE_START 1
 #define TWR_MSG_TYPE_DATA_REPLY 3
 
-uint64_t t1, t2, t3, t4;
+#define NB_SERVER 2
+
+uint64_t t1, t2[NB_SERVER], t3[NB_SERVER], t4[NB_SERVER];
 uint64_t mask = 0xFFFFFFFFFF;
 int32_t tof;
 
@@ -40,6 +42,10 @@ uint8_t rxData[128];
 uint16_t rxLen;
 int state;
 uint32_t timeout;
+
+int received_data_reply;
+uint64_t rtt, response_time;
+
 
 
 void setup()
@@ -75,10 +81,12 @@ void loop()
       delay(RANGING_PERIOD); // Wait to avoid medium flooding between two rangings or if a ranging fails
       decaduino.plmeRxDisableRequest();
       Serial.println("New TWR");
-      txData[0] = TWR_MSG_TYPE_START;
-      decaduino.pdDataRequest(txData, 1);
+      txData[0] = 30;
+      txData[1] = TWR_MSG_TYPE_START;
+      decaduino.pdDataRequest(txData, 2);
       timeout = millis() + TIMEOUT_WAIT_START_SENT;
       state = TWR_ENGINE_STATE_WAIT_START_SENT;
+      received_data_reply = 0;
       break;
 
     case TWR_ENGINE_STATE_WAIT_START_SENT:
@@ -103,13 +111,11 @@ void loop()
     case TWR_ENGINE_STATE_WAIT_DATA_REPLY:
       if ( millis() > timeout ) {
         state = TWR_ENGINE_STATE_INIT;
+        Serial.println("timeout");
       } else {
         if ( decaduino.rxFrameAvailable() ) {
-          
-          Serial.println(rxData[0]);
-          if ( rxData[0] == TWR_MSG_TYPE_DATA_REPLY ) {
+          if ( rxData[0] == 30 && rxData[1] == TWR_MSG_TYPE_DATA_REPLY ) {
             state = TWR_ENGINE_STATE_MEMORISE_T4;
-            Serial.println("T4");
           } else {
             decaduino.plmeRxEnableRequest();
           	state = TWR_ENGINE_STATE_WAIT_DATA_REPLY;
@@ -119,31 +125,43 @@ void loop()
       break;
 
     case TWR_ENGINE_STATE_MEMORISE_T4:
-      t4 = decaduino.getLastRxTimestamp();
+      t4[received_data_reply] = decaduino.getLastRxTimestamp();
       decaduino.plmeRxEnableRequest();
       state = TWR_ENGINE_STATE_EXTRACT_T2_T3;
       break;
 
     case TWR_ENGINE_STATE_EXTRACT_T2_T3:
-      t2 = decaduino.decodeUint40(&rxData[1]);
-      t3 = decaduino.decodeUint40(&rxData[6]);
-      tof = (((t4 - t1) & mask) - ((t3 - t2) & mask))/2;
+    {
+      uint64_t &current_t2 = t2[received_data_reply];
+      uint64_t &current_t3 = t3[received_data_reply];
+      uint64_t &current_t4 = t4[received_data_reply];
+      Serial.print(received_data_reply);
+      Serial.print("->     ");
+      t2[received_data_reply] = decaduino.decodeUint40(&rxData[2]);
+      t3[received_data_reply] = decaduino.decodeUint40(&rxData[7]);
+      rtt = (current_t4 - t1) & mask;
+      response_time =  (current_t3 - current_t2) & mask;
+      
+      tof = (rtt - response_time)/2;
       distance = tof*RANGING_UNIT;
       Serial.print(tof);
       Serial.print("\t");
       Serial.print(distance);
-      tof = (((t4 - t1) & mask) - (1+1.0E-6*decaduino.getLastRxSkew())*((t3 - t2) & mask))/2;
-      
+      tof = (  rtt  - ( (1+1.0E-6*decaduino.getLastRxSkew()) *(response_time) ))/2;
+     
       
       distance = tof*RANGING_UNIT;
       Serial.print("\t");
       Serial.print(tof);
       Serial.print("\t");
       Serial.println(distance);
-      Serial.print("\t");
-      Serial.println(decaduino.getLastRxSkew());
-      state = TWR_ENGINE_STATE_INIT;
+      
+      ++received_data_reply;
+      timeout = millis() + TIMEOUT_WAIT_ACK;
+      state = ((received_data_reply < NB_SERVER) ? TWR_ENGINE_STATE_WAIT_DATA_REPLY : TWR_ENGINE_STATE_INIT);
       break;
+    }
+      
 
     default:
       state = TWR_ENGINE_STATE_INIT;
