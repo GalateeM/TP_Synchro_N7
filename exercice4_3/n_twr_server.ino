@@ -1,0 +1,144 @@
+// DecaDuinoTWR_server
+// A simple implementation of the TWR protocol, server side
+// Contributors: Adrien van den Bossche, Réjane Dalcé, Ibrahim Fofana, Robert Try, Thierry Val
+// This sketch is a part of the DecaDuino Project - please refer to the DecaDuino LICENCE file for licensing details
+
+#include <SPI.h>
+#include <DecaDuino.h>
+
+// Timeout parameters
+#define TIMEOUT_WAIT_ACK_SENT 5 //ms
+#define TIMEOUT_WAIT_DATA_REPLY_SENT 5 //ms
+// #define ACK_DATA_REPLY_INTERFRAME 10 //ms
+uint64_t DELAY_TX = 1000000000;
+
+// TWR server states state machine enumeration: see state diagram on documentation for more details
+enum { TWR_ENGINE_STATE_INIT, TWR_ENGINE_STATE_WAIT_START, TWR_ENGINE_STATE_MEMORISE_T2,
+TWR_ENGINE_STATE_SEND_ACK, TWR_ENGINE_STATE_WAIT_ACK_SENT, TWR_ENGINE_STATE_MEMORISE_T3,
+TWR_ENGINE_STATE_SEND_DATA_REPLY, TWR_ENGINE_STATE_WAIT_DATA_REPLY_SENT };
+
+// Message types of the TWR protocol
+#define TWR_MSG_TYPE_UNKNOWN 0
+#define TWR_MSG_TYPE_START 1
+// #define TWR_MSG_TYPE_ACK 2
+#define TWR_MSG_TYPE_DATA_REPLY 3
+
+uint64_t t2, t3;
+
+#ifdef ARDUINO_DWM1001_DEV
+DecaDuino decaduino(SS1, DW_IRQ);
+#else
+DecaDuino decaduino;
+#endif
+
+uint8_t txData[128];
+uint8_t rxData[128];
+uint16_t rxLen;
+int state;
+uint32_t timeout;
+
+
+void setup()
+{
+  pinMode(13, OUTPUT); // Internal LED (pin 13 on DecaWiNo board)
+  Serial.begin(115200); // Init Serial port
+#ifndef ARDUINO_DWM1001_DEV
+  SPI.setSCK(14); // Set SPI clock pin (pin 14 on DecaWiNo board)
+#endif
+  // Init DecaDuino and blink if initialisation fails
+  if ( !decaduino.init() ) {
+    Serial.println("decaduino init failed");
+    while(1) { digitalWrite(13, HIGH); delay(50); digitalWrite(13, LOW); delay(50); }
+  }
+
+  // Set RX buffer
+  decaduino.setRxBuffer(rxData, &rxLen);
+  state = TWR_ENGINE_STATE_INIT;
+}
+
+
+void loop()
+{
+  decaduino.engine();
+
+  switch (state) {
+   
+    case TWR_ENGINE_STATE_INIT:
+      Serial.println("[STATE] Init");
+      decaduino.plmeRxEnableRequest();
+      state = TWR_ENGINE_STATE_WAIT_START;
+      break;
+
+    case TWR_ENGINE_STATE_WAIT_START:
+      //Serial.println("[STATE] Wait start");
+      if ( decaduino.rxFrameAvailable() ) {
+        if ( rxData[0] == TWR_MSG_TYPE_START ) {
+          Serial.println("[MESSAGE] Start");
+          state = TWR_ENGINE_STATE_MEMORISE_T2;
+        }
+        else {
+            state = TWR_ENGINE_STATE_INIT;
+        }
+      }
+      break;
+
+    case TWR_ENGINE_STATE_MEMORISE_T2:
+      Serial.println("[STATE] Memorise T2");
+      t2 = decaduino.getLastRxTimestamp();
+      // state = TWR_ENGINE_STATE_SEND_ACK;
+      state = TWR_ENGINE_STATE_MEMORISE_T3;
+      break;
+    /*
+    case TWR_ENGINE_STATE_SEND_ACK:
+      Serial.println("[STATE] Send ACK");
+      txData[0] = TWR_MSG_TYPE_ACK;
+      decaduino.pdDataRequest(txData, 1);
+      timeout = millis() + TIMEOUT_WAIT_ACK_SENT;
+      state = TWR_ENGINE_STATE_WAIT_ACK_SENT;
+      break;
+
+    case TWR_ENGINE_STATE_WAIT_ACK_SENT:
+      // Serial.println("[STATE] Wait ACK sent");
+      if ( millis() > timeout ) {
+        state = TWR_ENGINE_STATE_INIT;
+      } else {
+        if ( decaduino.hasTxSucceeded() ) {
+          state = TWR_ENGINE_STATE_MEMORISE_T3;  
+        }
+      }
+      break;
+    */
+
+    case TWR_ENGINE_STATE_MEMORISE_T3:
+      Serial.println("[STATE] Memorise T3");
+      // t3 = decaduino.getLastTxTimestamp();
+      t3 = decaduino.alignDelayedTransmission(DELAY_TX);
+      state = TWR_ENGINE_STATE_SEND_DATA_REPLY;
+      break;
+
+    case TWR_ENGINE_STATE_SEND_DATA_REPLY:
+      Serial.println("[STATE] Send DATA reply");
+      // delay(ACK_DATA_REPLY_INTERFRAME);
+      txData[0] = TWR_MSG_TYPE_DATA_REPLY;
+      decaduino.encodeUint40(t2, &txData[1]);
+      decaduino.encodeUint40(t3, &txData[6]);
+      // decaduino.pdDataRequest(txData, 11);
+      decaduino.pdDataRequest(txData, 11, true, t3);
+      timeout = millis() + TIMEOUT_WAIT_DATA_REPLY_SENT;
+      state = TWR_ENGINE_STATE_WAIT_DATA_REPLY_SENT;
+      break;
+ 
+ 		case TWR_ENGINE_STATE_WAIT_DATA_REPLY_SENT:
+      // Serial.println("[STATE] Wait DATA reply sent");
+      if ( (millis()>timeout) || (decaduino.hasTxSucceeded()) ) {
+        state = TWR_ENGINE_STATE_INIT;
+      }
+      break;
+ 		
+    default:
+      state = TWR_ENGINE_STATE_INIT;
+      break;
+  }
+}
+
+
