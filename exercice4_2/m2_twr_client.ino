@@ -12,7 +12,6 @@
 // Timeout parameters
 #define TIMEOUT_WAIT_START_SENT 20 //ms
 #define TIMEOUT_WAIT_ACK 50 //ms
-#define TIMEOUT_WAIT_DATA_REPLY 50 //ms
 
 // Ranging period parameter
 #define RANGING_PERIOD 500 //ms
@@ -121,7 +120,6 @@ void loop()
 
     case TWR_ENGINE_STATE_MEMORISE_T4:
       t4 = decaduino.getLastRxTimestamp();
-      timeout = millis() + TIMEOUT_WAIT_DATA_REPLY;
       decaduino.plmeRxEnableRequest();
       state = TWR_ENGINE_STATE_EXTRACT_T2_T3;
       break;
