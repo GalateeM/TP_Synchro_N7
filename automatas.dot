@@ -1,0 +1,50 @@
+digraph G {
+    rankdir=LR;
+    node [shape=circle];
+
+    subgraph cluster_master {
+        label = "Master";
+        style=filled;s
+        color=lightgrey;
+        Master_Init [label="Init"];
+        Master_Send_Sync [label="Send Sync"];
+        Master_Memorize_t1_A [label="Memorize t1"];
+        Master_Send_Follow_up_t1 [label="Send Follow_up (t1)"];
+        Master_Wait_Delay_req [label="Wait Delay_req"];
+        Master_Memorize_t1_B [label="Memorize t1"];
+        Master_Send_Delay_resp_t4 [label="Send Delay_resp (t4)"];
+
+        Master_Init -> Master_Send_Sync;
+        Master_Send_Sync -> Master_Memorize_t1_A [label="Sync!"];
+        Master_Memorize_t1_A -> Master_Send_Follow_up_t1;
+        Master_Send_Follow_up_t1 -> Master_Wait_Delay_req [label="Follow_up!"];
+        Master_Wait_Delay_req -> Master_Memorize_t1_B [label="Delay_req?"];
+        Master_Memorize_t1_B -> Master_Send_Delay_resp_t4;
+        Master_Send_Delay_resp_t4 -> Master_Init [label="Delay_resp!"];
+    }
+
+    subgraph cluster_slave {
+        label = "Slave";
+        style=filled;
+        color=lightblue;
+        Slave_Init [label="Init"];
+        Slave_Wait_Sync [label="Wait Sync"];
+        Slave_Memorize_t2 [label="Memorize t2"];
+        Slave_Wait_Follow_up [label="Wait Follow_up"];
+        Slave_Memorize_t1 [label="Memorize t1"];
+        Slave_Send_Delay_req [label="Send Delay_req"];
+        Slave_Memorize_t3 [label="Memorize t3"];
+        Slave_Wait_Delay_resp [label="Wait Delay_resp"];
+        Slave_Memorize_t4 [label="Memorize t4"];
+
+        Slave_Init -> Slave_Wait_Sync;
+        Slave_Wait_Sync -> Slave_Memorize_t2 [label="Sync?"];
+        Slave_Memorize_t2 -> Slave_Wait_Follow_up;
+        Slave_Wait_Follow_up -> Slave_Memorize_t1 [label="Follow_up?"];
+        Slave_Memorize_t1 -> Slave_Send_Delay_req;
+        Slave_Send_Delay_req -> Slave_Memorize_t3 [label="Delay_req!"];
+        Slave_Memorize_t3 -> Slave_Wait_Delay_resp;
+        Slave_Wait_Delay_resp -> Slave_Memorize_t4 [label="Delay_resp?"];
+        Slave_Memorize_t4 -> Slave_Init;
+    }
+}
