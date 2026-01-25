@@ -1,0 +1,44 @@
+digraph G {
+    rankdir=LR;
+    node [shape=circle];
+
+    subgraph cluster_server {
+        label = "Server";
+        style=filled;
+        color=lightgrey;
+        Server_Init [label="Init"];
+        Server_Wait_Start [label="Wait Start"];
+        Server_Memorize_t2 [label="Memorize t2"];
+        Server_Memorize_t3 [label="Memorize t3"];
+        Server_Send_Data_Reply [label="Send Data Reply"];
+        Server_Wait_Data_Reply_Sent [label="Wait Data Reply Sent"];
+
+        Server_Init -> Server_Wait_Start;
+        Server_Wait_Start -> Server_Memorize_t2 [label="Start?"];
+        Server_Memorize_t2 -> Server_Memorize_t3;
+        Server_Memorize_t3 -> Server_Send_Data_Reply;
+        Server_Send_Data_Reply -> Server_Wait_Data_Reply_Sent [label="Response!"];
+        Server_Wait_Data_Reply_Sent -> Server_Init;
+    }
+
+    subgraph cluster_client {
+        label = "Client";
+        style=filled;
+        color=lightblue;
+        Client_Init [label="Init"];
+        Client_Wait_Start_Sent [label="Wait Start Sent"];
+        Client_Memorize_t1 [label="Memorize t1"];
+        Client_Wait_Data_Reply [label="Wait Data Reply"];
+        Client_Memorize_t4 [label="Memorize t4"];
+        Client_Extract_t2_t3 [label="Extract t2 t3"];
+
+        Client_Init -> Client_Wait_Start_Sent;
+        Client_Wait_Start_Sent -> Client_Memorize_t1 [label="Start!"];
+        Client_Memorize_t1 -> Client_Wait_Data_Reply;
+        Client_Wait_Data_Reply -> Client_Memorize_t4 [label="Response?"];
+        Client_Memorize_t4 -> Client_Extract_t2_t3;
+        Client_Extract_t2_t3 -> Client_Wait_Data_Reply[label="nb_response < nb_server"];
+        Client_Extract_t2_t3 -> Client_Init[label="nb_response >= nb_server"];
+        Client_Wait_Data_Reply -> Client_Init[label="timeout"];
+    }
+}

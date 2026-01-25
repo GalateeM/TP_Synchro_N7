@@ -47,6 +47,8 @@ void loop()
   if ( decaduino.rxFrameAvailable() ) {
     Serial.print(rxData[0]);
     if(rxData[0] == 30) {
+
+      //affichage des informations du message recu
       digitalWrite(LED_BUILTIN, LED_ON);
       Serial.print("#"); Serial.print(++rxFrames); Serial.print(" ");
       Serial.print(rxLen);
@@ -60,6 +62,7 @@ void loop()
 
       decaduino.plmeRxDisableRequest();
 
+      //envoi un ack que sur certains messages pour expérimenter les timeout/retries
       if(ack_lost % 5 == 0) {
         // SEND ACK
         digitalWrite(LED_BUILTIN, LED_ON);
