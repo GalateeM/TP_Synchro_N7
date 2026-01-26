@@ -1,0 +1,25 @@
+digraph G {
+    rankdir=LR;
+    node [shape=circle];
+
+    subgraph cluster_server {
+        label = "Node";
+        style=filled;
+        color=lightblue;
+        Node_Init [label="Init"];
+        Node_Start_Sync [label="Start Sync"];
+        Node_Sync_Sent [label="Sync Sent"];
+        Node_Listen [label="Listen Sync"];
+        Node_Update_Clk [label="Update clock"];
+
+        Node_Init -> Node_Start_Sync [label="lclk % P == 0"];
+        Node_Start_Sync -> Node_Sync_Sent [label="sync!"];
+        Node_Sync_Sent -> Node_Init;
+        
+        
+        Node_Init -> Node_Listen [label="lclk % P != 0"];
+        Node_Listen -> Node_Update_Clk [label="sync?"];
+        Node_Update_Clk -> Node_Init;
+    }
+
+}
