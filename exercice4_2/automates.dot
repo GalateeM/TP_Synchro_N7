@@ -29,16 +29,15 @@ digraph G {
         Client_Wait_Start_Sent [label="Wait Start Sent"];
         Client_Memorize_t1 [label="Memorize t1"];
         Client_Wait_Data_Reply [label="Wait Data Reply"];
-        Client_Memorize_t4 [label="Memorize t4 \nnb_response ++"];
+        Client_Memorize_t4 [label="Memorize t4"];
         Client_Extract_t2_t3 [label="Extract t2 t3"];
 
         Client_Init -> Client_Wait_Start_Sent;
-        Client_Wait_Start_Sent -> Client_Memorize_t1 [label="Start! {nb_response}"];
+        Client_Wait_Start_Sent -> Client_Memorize_t1 [label="Start!"];
         Client_Memorize_t1 -> Client_Wait_Data_Reply;
         Client_Wait_Data_Reply -> Client_Memorize_t4 [label="Response?"];
+        Client_Wait_Data_Reply -> Client_Init [label="timeout"];
         Client_Memorize_t4 -> Client_Extract_t2_t3;
-        Client_Extract_t2_t3 -> Client_Wait_Data_Reply[label="nb_response < nb_server"];
-        Client_Extract_t2_t3 -> Client_Init[label="nb_response >= nb_server"];
-        Client_Wait_Data_Reply -> Client_Init[label="timeout"];
+        Client_Extract_t2_t3 -> Client_Init;
     }
 }
