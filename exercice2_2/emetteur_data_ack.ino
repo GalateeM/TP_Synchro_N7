@@ -146,28 +146,6 @@ void loop()
         ++seqNumber;
         retries = 0;
     }
-    /* -------------------------------------------------------------------------
-     * [FEAT: begin]
-     * Read a message from the serial monitor input,
-     * then, send this message using the UWB transceiver.
-     */
-    // readFromSerialAndForward();
-    // [FEAT: end] -------------------------------------------------------------
-
-    /* -------------------------------------------------------------------------
-     * [FEAT: begin]
-     * Listen to the UWB transceiver and store incoming frames in a buffer,
-     * Then, display this message on the serial monitor.
-     */
-    // listenAndDisplayToMonitor();
-    // [FEAT: end] -------------------------------------------------------------
-
-    /* -------------------------------------------------------------------------
-     * [FEAT: begin]
-     * A simple DATA + ACK protocol
-     */
-    // simpleDataAckProcotol(timeout, retries);
-    // [FEAT: end] -------------------------------------------------------------
 
     delay(1000);
 }
